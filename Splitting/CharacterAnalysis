@@ -1,0 +1,16 @@
+import matplotlib.pyplot as plt
+from PIL import Image, ImageDraw
+import math
+import numpy
+from operator import itemgetter
+from os import listdir
+import sys
+
+Dimensions = []
+
+for File in listdir("Characters"):
+	TempImage = Image.open("Characters/" + File)
+	Dimensions.append(TempImage.size[0])
+
+plt.plot(Dimensions)
+plt.show()
