@@ -1,8 +1,11 @@
 import math
 
-def Median(Array):
+def Median(Array, Default=0):
 	SortedArray = sorted(Array)
 	MedianValue = None
+
+	if len(Array) == 0:
+		return Default
 
 	# if the array is odd
 	if len(SortedArray) % 2 != 0:
@@ -10,8 +13,8 @@ def Median(Array):
 		MedianValue = SortedArray[int(math.floor(len(Array) / 2.0))]
 	# if the array is even
 	else:
-		# MedianValue = (SortedArray[len(Array) / 2] + SortedArray[(len(Array) / 2) + 1]) / 2.0
-		MedianValue = SortedArray[(len(Array) / 2) + 1]
+		# 
+		MedianValue = SortedArray[int(math.floor(len(Array) / 2))]
 
 	return MedianValue
 

@@ -39,8 +39,8 @@ def PixelSumOnLine(Pixels, PointOne, PointTwo):
 
 
 # look at the first file in the folder
-FileName = listdir("Processed")[0]
-#FileName = "Cropped4.png"
+#FileName = listdir("Processed")[0]
+FileName = "Cropped3.png"
 
 # open the text image
 TextImage = Image.open("Processed/" + FileName)
@@ -118,7 +118,8 @@ Spacing = Array.AverageSpacing(PreliminaryCropPoints)
 
 # calculate crop points again using the new line height
 CropPoints = CalculateCropPoints(Spacing, ShowGraphs=True)
-#print "new spacing", Array.AverageSpacing(CropPoints)
+
+print CropPoints
 
 # get the image drawing canvas ready 
 Drawing = ImageDraw.Draw(TextImage)
@@ -209,6 +210,17 @@ for CropPoint in CropPoints:
 	# append here because for the deltax calculations we are rounding down and there will be some extra space
 	CropField[len(CropField) - 1].append([TextImage.size[0], CropField[len(CropField) - 1][len(CropField[len(CropField) - 1]) - 1][1]])
 
+# the crop field may contain points that are out of range.
+# these are corrected here
+for Line in CropField:
+	for Point in Line:
+		# set max y value
+		if Point[1] >= TextImage.size[1]:
+			Point[1] = TextImage.size[1] - 1
+		# set max x value
+		if Point[1] < 0:
+			Point[1] = 0
+
 for p in range(0, len(CropField) - 1):
 	# make a copy of the text image
 	LineImage = TextImage.copy()
@@ -217,8 +229,7 @@ for p in range(0, len(CropField) - 1):
 	SmallestY = sorted(CropField[p], key=itemgetter(1), reverse=False)[0][1]
 	LargestY = sorted(CropField[p + 1], key=itemgetter(1), reverse=True)[0][1]
 
-	# crop the image
-	LineImage = LineImage.crop((0, SmallestY, LineImage.size[0], LargestY))
+	print "largest-smallest", SmallestY, LargestY
 
 	# load the line image into pixels
 	LineImagePixels = LineImage.load()
@@ -228,11 +239,11 @@ for p in range(0, len(CropField) - 1):
 		Slope = float(Row[i][1] - Row[i + 1][1]) / float(Row[i][0] - Row[i + 1][0])
 
 		# iterate through all x values
-		y = Row[i][1] - SmallestY
+		y = Row[i][1]
 
 		for x in range(int(Row[i][0]), int(Row[i + 1][0])):
 			for tempy in range(0, int(math.ceil(y))):
-				LineImagePixels[x, tempy] = 256
+				LineImagePixels[x, tempy] = 255
 
 			# add slope to y because x always changes by 1
 			y += Slope
@@ -242,16 +253,21 @@ for p in range(0, len(CropField) - 1):
 		Slope = float(Row[i][1] - Row[i + 1][1]) / float(Row[i][0] - Row[i + 1][0])
 
 		# iterate through all x values
-		y = Row[i][1] - SmallestY
+		y = Row[i][1]
 
 		for x in range(int(Row[i][0]), int(Row[i + 1][0])):
 			for tempy in range(int(math.floor(y)), LineImage.size[1]):
-				LineImagePixels[x, tempy] = 256
+				LineImagePixels[x, tempy] = 255
 
 			# add slope to y because x always changes by 1
 			y += Slope
 
+	# crop the image after everything has been drawn on it
+	LineImage = LineImage.crop((0, SmallestY, LineImage.size[0], LargestY))
+	# save the image
 	LineImage.save("Lines/" + str(p) + ".png")
 
+
+lines are getting 'lurred' towards the edges. why?
 
 TextImage.save("lines.png")
