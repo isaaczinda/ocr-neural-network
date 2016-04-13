@@ -13,6 +13,33 @@ sys.path.append("../Tools")
 import Array
 import Statistics
 
+def CalculateLineHeight(Array):
+	Points = []
+
+	Mean = int(sum(Array) / float(len(Array)))
+
+	# make sure that it alternates decreasing, increasing
+	TargetIncreasing = False
+
+	for i in range(0, len(Array) - 1):
+		# increasing
+		if Array[i] < Mean and Array[i + 1] > Mean and TargetIncreasing == True:
+			Points.append(i)
+			TargetIncreasing = True
+		elif Array[i] > Mean and Array[i + 1] < Mean and TargetIncreasing == False:
+			Points.append(i)
+			TargetIncreasing = True
+
+
+	# make sure that if there is a point at the end without a 'partner', it is not used
+	Distances = []
+	NumberOfPairs = int(math.floor(len(Points) / 2.0))
+	for i in range(0, NumberOfPairs * 2, 2):
+		Distances.append((Points[i + 1] - Points[i]))
+
+	return Statistics.Median(Distances)
+
+
 def PixelSumOnLine(Pixels, PointOne, PointTwo):
 	ChangeX = abs(PointTwo[0] - PointOne[0])
 	ChangeY = abs(PointTwo[1] - PointOne[1])
@@ -40,7 +67,7 @@ def PixelSumOnLine(Pixels, PointOne, PointTwo):
 
 # look at the first file in the folder
 #FileName = listdir("Processed")[0]
-FileName = "Cropped3.png"
+FileName = "Cropped4.png"
 
 # open the text image
 TextImage = Image.open("Processed/" + FileName)
@@ -49,12 +76,23 @@ TextImage = TextImage.convert('L')
 # load the pixels
 TextPixels = TextImage.load()
 
-def CalculateCropPoints(LineHeight, ShowGraphs=False):
-	global FileName 
+def CalculateCropPoints(ShowGraphs=False):
+	global FileName
 
 	# do the gaussian smoothing that enables us to find the crop points
 	# blur the image
 	img = cv2.imread("Processed/" + FileName)
+
+	# compute the raw array
+	RawArray = Array.VerticalArrayFromImage(Image.fromarray(img))
+	# calculate the line height from the raw array
+	LineHeight = CalculateLineHeight(RawArray)
+
+	# save the line height to a convenient file 
+	with open("SharedData/LineHeight.txt", "w") as text_file:
+		text_file.write(str(LineHeight))
+
+	print "line height", LineHeight
 
 	# calculate filter and smooth sizes based on how big the image is
 	YFilterSize = Statistics.RoundToOdd(len(img) / 20)
@@ -64,12 +102,9 @@ def CalculateCropPoints(LineHeight, ShowGraphs=False):
 	# use the line height, and make the smoothing size 1/2 of that 
 	SmoothSize = Statistics.RoundToEven(LineHeight / 2.0)
 
-	print "smooth size", SmoothSize
-
 	# use the recomended standard deviation
 	blur = cv2.GaussianBlur(img,(XFilterSize, YFilterSize), 0)
 
-	RawArray = Array.VerticalArrayFromImage(Image.fromarray(img))
 	BlurredImageArray = Array.VerticalArrayFromImage(Image.fromarray(blur), BandPercentage=.5)
 	MeanArray = Array.MeanArray(BlurredImageArray, SmoothSize)
 	MedianArray = Array.MedianArray(BlurredImageArray, SmoothSize)
@@ -111,22 +146,15 @@ def CalculateCropPoints(LineHeight, ShowGraphs=False):
 
 	return CropPoints
 
-# calculate the crop point, guessing line height 80
-PreliminaryCropPoints = CalculateCropPoints(80)
-
-Spacing = Array.AverageSpacing(PreliminaryCropPoints)
-
-# calculate crop points again using the new line height
-CropPoints = CalculateCropPoints(Spacing, ShowGraphs=True)
-
-print CropPoints
+# calculate crop points
+CropPoints = CalculateCropPoints(ShowGraphs=True)
 
 # get the image drawing canvas ready 
 Drawing = ImageDraw.Draw(TextImage)
 
 # number of segments that will be used to segment
-# each segment is 10 pixels wide
-NumberOfSegments = int(TextImage.size[0] / 10.0) 
+# there will be 100 segments per image
+NumberOfSegments = 100
 
 # this is a list of the line segments that the image needs to be cropped between
 CropField = []	
@@ -168,7 +196,15 @@ for CropPoint in CropPoints:
 				XCheckDistance = DistanceFromEdge
 
 			# multiply by extra length to ensure that angle is preserved
-			Sum = PixelSumOnLine(TextPixels, (XCoordinate, YCoordinate), (XCoordinate + XCheckDistance, YCoordinate + int(DeltaY * ExtraLength)))
+			# if the XCheckDistance is shortened, we also shorten the DeltaY values
+			StartCoordinate = (XCoordinate, YCoordinate)
+			EndCoordinate = (XCoordinate + XCheckDistance, YCoordinate + int(DeltaY * ExtraLength * (XCheckDistance / (DeltaX * ExtraLength))))
+			# calculate the actual sum
+			Sum = PixelSumOnLine(TextPixels, StartCoordinate, EndCoordinate)
+
+			# divide the sum by its length so that there isn't bias
+			LineLength = math.sqrt(math.pow(StartCoordinate[0] - EndCoordinate[0], 2) + math.pow(StartCoordinate[1] - EndCoordinate[1], 2))
+			Sum = float(Sum) / float(LineLength)
 
 			# add the sum and the DeltaY
 			PixelSumArray.append([Sum, DeltaY])
@@ -176,11 +212,11 @@ for CropPoint in CropPoints:
 		# sort pixelsummary to find value with highest average number
 		PixelSumArray = sorted(PixelSumArray, key=itemgetter(0), reverse=True)
 
-		# average all of the values that are the same 
+		# average all of the values that are the same, since there might be two regions that are all white
 		DeltaYAverage = 0
 		NumberOfValues = 0
 
-		# this is the lowest value
+		# this is the lowest value, might be others like it
 		TargetValue = PixelSumArray[0][0]
 
 		for Item in PixelSumArray:
@@ -189,14 +225,17 @@ for CropPoint in CropPoints:
 				DeltaYAverage += Item[1]
 				NumberOfValues += 1
 
-		DeltaYAverage /= NumberOfValues
+		DeltaYAverage = int(DeltaYAverage / float(NumberOfValues))
 
-		# this prevents the lines from ever leaving the image
+		# this prevents the lines from ever leaving the bottom of the image
 		if YCoordinate + DeltaYAverage < 0:
 			DeltaYAverage = YCoordinate
-			
+		# prevents lines from leaving the top of the image
+		if YCoordinate + DeltaYAverage >= TextImage.size[1]:
+			DeltaYAverage = (TextImage.size[1] - 1) - YCoordinate
+
 		# draw a nice line on the image
-		Drawing.line((XCoordinate, YCoordinate, XCoordinate + DeltaX, YCoordinate + DeltaYAverage), fill=128)
+		Drawing.line((XCoordinate, YCoordinate, XCoordinate + DeltaX, YCoordinate + DeltaYAverage), fill=256)
 
 		# add the current coordinates to the CropField before they change
 		CropField[len(CropField) - 1].append([XCoordinate, YCoordinate])
@@ -209,17 +248,6 @@ for CropPoint in CropPoints:
 	CropField[len(CropField) - 1].append([XCoordinate, YCoordinate])
 	# append here because for the deltax calculations we are rounding down and there will be some extra space
 	CropField[len(CropField) - 1].append([TextImage.size[0], CropField[len(CropField) - 1][len(CropField[len(CropField) - 1]) - 1][1]])
-
-# the crop field may contain points that are out of range.
-# these are corrected here
-for Line in CropField:
-	for Point in Line:
-		# set max y value
-		if Point[1] >= TextImage.size[1]:
-			Point[1] = TextImage.size[1] - 1
-		# set max x value
-		if Point[1] < 0:
-			Point[1] = 0
 
 for p in range(0, len(CropField) - 1):
 	# make a copy of the text image
@@ -263,11 +291,10 @@ for p in range(0, len(CropField) - 1):
 			y += Slope
 
 	# crop the image after everything has been drawn on it
-	LineImage = LineImage.crop((0, SmallestY, LineImage.size[0], LargestY))
+	LineImage = LineImage.crop((0, SmallestY + 1, LineImage.size[0], LargestY))
 	# save the image
 	LineImage.save("Lines/" + str(p) + ".png")
 
 
-lines are getting 'lurred' towards the edges. why?
-
 TextImage.save("lines.png")
+TextImage.show()

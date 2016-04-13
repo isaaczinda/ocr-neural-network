@@ -3,6 +3,24 @@ import math
 import numpy
 import Statistics
 
+def FindClusters(Array, MaxDistance):
+	ClusteredArray = [[]]
+	Array = sorted(Array)
+
+	# add the first point to the array because it automatically fits
+	ClusteredArray[0].append(Array[0])
+
+	# sort the array based on the distacne between the points
+	for i in range(0, len(Array) - 1):
+		if abs(Array[i] - Array[i + 1]) >= MaxDistance:
+			ClusteredArray.append([])
+
+		# append to the current array
+		ClusteredArray[len(ClusteredArray) - 1].append(Array[i + 1])
+
+	return ClusteredArray
+
+
 def BlackAndWhite(InputImage, Threshold=0):
 	InputImagePixels = InputImage.load()
 
@@ -220,6 +238,19 @@ def FindAllLocalMaxes(Array):
 		# one is >= other is < so its fine if it hovers around 0
 		# round so that slight floating point errors can't create a fake max
 		if round(Array[i], 3) >= 0 and round(Array[i + 1], 3) < 0:
+			Return.append(i)
+
+	return Return
+
+def FindAllLocalMins(Array):
+	Array = FindSlope(Array)
+
+	Return = []
+
+	for i in range(0, len(Array) - 1):
+		# one is >= other is < so its fine if it hovers around 0
+		# round so that slight floating point errors can't create a fake max
+		if round(Array[i], 3) <= 0 and round(Array[i + 1], 3) > 0:
 			Return.append(i)
 
 	return Return

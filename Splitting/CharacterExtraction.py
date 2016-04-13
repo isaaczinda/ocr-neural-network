@@ -16,6 +16,8 @@ import Statistics
 # find the max and min values for each column. Use the difference between these to understand if space is white or not. also maybe use SD?
 # then split big things, becuase we know roughly what the biggest letter is 
 
+print Array.FindClusters([0, 1, 2, 3, 4, 10, 11, 12, 20, 21, 22], 5)
+
 Filename = "10.png"
 TextImage = Image.open("Lines/" + Filename).convert('L')
 TextImagePixels = TextImage.load()
@@ -30,8 +32,6 @@ for x in range(0, TextImage.size[0]):
 		# discount everything that's completely white 
 		if TextImagePixels[x, y] != 255:
 			ImageSlice.append(TextImagePixels[x, y])
-	
-	print x, ImageSlice
 
 	Difference = 0
 	SecondDifference = 0
@@ -41,11 +41,34 @@ for x in range(0, TextImage.size[0]):
 	StandardDeviationArray.append(numpy.std(ImageSlice))
 	DifferenceArray.append(Difference)
 
+# find all of the local mins
+LocalMins = Array.FindAllLocalMins(DifferenceArray)
 
+# read the line height from the file
+LineHeight = 0
+with open('SharedData/LineHeight.txt', 'r') as content_file:
+    LineHeight = int(content_file.read())
+
+print LineHeight
+
+# eliminate any local mins that don't have values less than 40
+CropPoints = []
+Threshold = 40
+for Min in LocalMins:
+	if DifferenceArray[Min] < Threshold:
+		CropPoints.append(Min)
+
+# create a temp array for visualizing
+TempArray = []
+for i in range(0, len(DifferenceArray)):
+	if i in CropPoints:
+		TempArray.append(100)
+	else:
+		TempArray.append(0)
 
 fig, ((ax1, ax2)) = plt.subplots(2, 1, sharex=False, sharey=False)	
 
-
+ax1.plot(TempArray)
 ax1.plot(DifferenceArray)
 ax2.imshow(TextImage)
 
