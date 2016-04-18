@@ -15,36 +15,6 @@ sys.path.append("../Tools")
 import Array
 import Statistics
 
-def CalculateLineHeight(Array):
-	Points = []
-
-	Mean = int(sum(Array) / float(len(Array)))
-
-	print "mean is", Mean
-
-	# make sure that it alternates decreasing, increasing
-	TargetIncreasing = False
-
-	for i in range(0, len(Array) - 1):
-		# increasing
-		if Array[i] < Mean and Array[i + 1] > Mean and TargetIncreasing == True:
-			Points.append(i)
-			TargetIncreasing = True
-		elif Array[i] > Mean and Array[i + 1] < Mean and TargetIncreasing == False:
-			Points.append(i)
-			TargetIncreasing = True
-
-
-	# make sure that if there is a point at the end without a 'partner', it is not used
-	Distances = []
-	NumberOfPairs = int(math.floor(len(Points) / 2.0))
-	for i in range(0, NumberOfPairs * 2, 2):
-		Distances.append((Points[i + 1] - Points[i]))
-
-	print Distances
-
-	return Statistics.Median(Distances)
-
 
 def PixelSumOnLine(Pixels, PointOne, PointTwo):
 	ChangeX = abs(PointTwo[0] - PointOne[0])
