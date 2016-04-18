@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw
 import math
 import numpy
 import Statistics
+import cv2
 
 def FindClusters(Array, MaxDistance):
 	ClusteredArray = [[]]
@@ -20,50 +21,6 @@ def FindClusters(Array, MaxDistance):
 
 	return ClusteredArray
 
-
-def BlackAndWhite(InputImage, Threshold=0):
-	InputImagePixels = InputImage.load()
-
-	# make sure that the image is entirely black
-	for x in range(0, InputImage.size[0]):
-		for y in range(0, InputImage.size[1]):
-			if InputImagePixels[x, y] < (255 - Threshold):
-				InputImagePixels[x, y] = 0
-	
-	return InputImage
-
-def CropImageAroundBlack(InputImage):
-	CharacterHorizontalArray = HorizontalArrayFromImage(InputImage)
-	CharacterVerticalArray = VerticalArrayFromImage(InputImage)
-
-	YMin = 0
-	YMax = 0
-	XMin = 0
-	XMax = 0
-
-	# find the min and max for y
-	for i in range(0, len(CharacterVerticalArray)):
-		if CharacterVerticalArray[i] != 255:
-			YMin = i
-			break
-	for i in range(InputImage.size[1] - 1, -1, -1):
-		if CharacterVerticalArray[i] != 255:
-			YMax = i
-			break
-
-	# find the min and max for x
-	for i in range(0, len(CharacterHorizontalArray)):
-		if CharacterHorizontalArray[i] != 255:
-			XMin = i
-			break
-	for i in range(InputImage.size[0] - 1, -1, -1):
-		if CharacterHorizontalArray[i] != 255:
-			XMax = i
-			break
-
-	# +1's are to compensate for how crop function works
-	InputImage = InputImage.crop((XMin, YMin, XMax + 1, YMax + 1))
-	return InputImage
 
 def HorizontalArrayFromImage(InputImage):
 	ReturnArray = []
@@ -117,12 +74,28 @@ def FindLocalMaxes(Array, NumberToFind):
 
 	return LocalMaxes
 
-def FindSlope(Array):
+def OldFindSlope(Array):
 	NewArray = []
 	for i in range(0, len(Array) - 1):
 		NewArray.append(round(Array[i + 1], 3) - round(Array[i], 3))
 	# add an extra element so the lengths match
 	NewArray.append(round(NewArray[len(NewArray) - 1], 3))
+
+	return NewArray
+
+def FindSlope(Array):
+	NewArray = []
+
+	# add the initial ite,
+
+	for i in range(0, len(Array) - 2):
+		NewArray.append((round(Array[i + 2], 3) - round(Array[i], 3)) / 2.0)
+	
+	# insert an item at the beginning
+	NewArray.insert(0, NewArray[0])
+
+	# add an extra element so the lengths match
+	NewArray.append(NewArray[len(NewArray) - 1])
 
 	return NewArray
 
@@ -251,6 +224,13 @@ def FindAllLocalMins(Array):
 		# one is >= other is < so its fine if it hovers around 0
 		# round so that slight floating point errors can't create a fake max
 		if round(Array[i], 3) <= 0 and round(Array[i + 1], 3) > 0:
-			Return.append(i)
+			
+			# append whichever value is actually closer
+			if abs(Array[i]) < abs(Array[i + 1]):
+				Return.append(i)
+			else:
+				Return.append(i + 1)
+
+
 
 	return Return

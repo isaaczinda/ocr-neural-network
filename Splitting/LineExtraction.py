@@ -5,8 +5,10 @@ import numpy
 from operator import itemgetter
 import sys
 from os import listdir
+import os
 import cv2
 import numpy as np
+import glob
 
 # add the tools folder to the path
 sys.path.append("../Tools")
@@ -17,6 +19,8 @@ def CalculateLineHeight(Array):
 	Points = []
 
 	Mean = int(sum(Array) / float(len(Array)))
+
+	print "mean is", Mean
 
 	# make sure that it alternates decreasing, increasing
 	TargetIncreasing = False
@@ -36,6 +40,8 @@ def CalculateLineHeight(Array):
 	NumberOfPairs = int(math.floor(len(Points) / 2.0))
 	for i in range(0, NumberOfPairs * 2, 2):
 		Distances.append((Points[i + 1] - Points[i]))
+
+	print Distances
 
 	return Statistics.Median(Distances)
 
@@ -65,9 +71,15 @@ def PixelSumOnLine(Pixels, PointOne, PointTwo):
 	return Sum / ChangeX
 
 
+# delete all limes in the Lines folder before we create new ones
+print len(glob.glob('Lines/*')), "line file(s) deleted"
+files = glob.glob('Lines/*')
+for f in files:
+    os.remove(f)
+
 # look at the first file in the folder
 #FileName = listdir("Processed")[0]
-FileName = "Cropped4.png"
+FileName = "Cropped1.png"
 
 # open the text image
 TextImage = Image.open("Processed/" + FileName)
@@ -76,7 +88,7 @@ TextImage = TextImage.convert('L')
 # load the pixels
 TextPixels = TextImage.load()
 
-def CalculateCropPoints(ShowGraphs=False):
+def CalculateCropPoints(LineHeight, ShowGraphs=False):
 	global FileName
 
 	# do the gaussian smoothing that enables us to find the crop points
@@ -85,14 +97,6 @@ def CalculateCropPoints(ShowGraphs=False):
 
 	# compute the raw array
 	RawArray = Array.VerticalArrayFromImage(Image.fromarray(img))
-	# calculate the line height from the raw array
-	LineHeight = CalculateLineHeight(RawArray)
-
-	# save the line height to a convenient file 
-	with open("SharedData/LineHeight.txt", "w") as text_file:
-		text_file.write(str(LineHeight))
-
-	print "line height", LineHeight
 
 	# calculate filter and smooth sizes based on how big the image is
 	YFilterSize = Statistics.RoundToOdd(len(img) / 20)
@@ -146,8 +150,15 @@ def CalculateCropPoints(ShowGraphs=False):
 
 	return CropPoints
 
-# calculate crop points
-CropPoints = CalculateCropPoints(ShowGraphs=True)
+# calculate crop points, guess line height of 80
+CropPoints = CalculateCropPoints(80, ShowGraphs=False)
+
+# save the line height to a convenient file
+LineHeight = Array.AverageSpacing(CropPoints)
+with open("SharedData/LineHeight.txt", "w") as text_file:
+		text_file.write(str(LineHeight))
+
+CropPoints = CalculateCropPoints(LineHeight, ShowGraphs=True)
 
 # get the image drawing canvas ready 
 Drawing = ImageDraw.Draw(TextImage)
