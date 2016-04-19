@@ -30,7 +30,7 @@ MaxSpacing = 1.5 # if spacing more than twice line height is detected, it will b
 # read the line height from the file
 LineHeight = 0
 with open('SharedData/LineHeight.txt', 'r') as content_file:
-    LineHeight = int(content_file.read())
+    LineHeight = int(float(content_file.read()))
 
 print "line height", LineHeight
 
