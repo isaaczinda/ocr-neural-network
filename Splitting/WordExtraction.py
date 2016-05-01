@@ -15,8 +15,9 @@ sys.path.append("../Tools")
 import Array
 import Statistics
 
-img = cv2.imread("Lines/3.png")
-
+img = cv2.imread("Lines/4.png")
+# 111 (0-6), min-max method
+# 11
 # compute the raw array
 RawArray = Array.VerticalArrayFromImage(Image.fromarray(img))
 
@@ -46,7 +47,9 @@ MeanArrayBlurred = Array.MeanArray(BlurredImageArray, SmoothSize)
 fig, ((ax1, ax2)) = plt.subplots(2, 1, sharex=False, sharey=False)
 
 
+# LocalMaxes = sorted(Array.FindAllLocalMaxes(BlurredImageArray) + Array.FindAllLocalMins(BlurredImageArray))
 LocalMaxes = Array.FindAllLocalMaxes(BlurredImageArray)
+
 
 # sets how different maximums from the 'same' point can be
 # this may be incorrect and will FUCK us
@@ -88,15 +91,20 @@ for i in range(1, len(FilteredLocalMaxes) - 1):
 	DifferencesBetweenMaxes.append(FirstOffset + SecondOffset)
 
 Mean = sum(DifferencesBetweenMaxes) / float(len(DifferencesBetweenMaxes))
+Max = sorted(DifferencesBetweenMaxes, reverse=True)[0]
 
-SpaceDifferenceThreshold = 10
+SpaceDifferenceThreshold = (Max + Mean) / 2.0
+
 NumberOfSpaces = 0
 for Item in DifferencesBetweenMaxes:
 	if Item >= SpaceDifferenceThreshold:
 		NumberOfSpaces += 1
 
-print NumberOfSpaces, "spaces, mean", Mean
+print NumberOfSpaces, "spaces, mean", Mean, "max", Max
+
+print "cutoff", SpaceDifferenceThreshold
 print DifferencesBetweenMaxes
+
 #for i in range(0, DifferencesBetweenMaxes):
 
 
@@ -110,18 +118,10 @@ for i in range(0, len(DifferencesBetweenMaxesTemp) - 1):
 	for q in range(DifferencesBetweenMaxesTemp[i][1], DifferencesBetweenMaxesTemp[i + 1][1]):
 		TempArray.append(DifferencesBetweenMaxesTemp[i][0])
 
-TempArray2 = []
-for i in range(0, len(BlurredImageArray)):
-	if i in FilteredLocalMaxes:
-		TempArray2.append(100)
-	else:
-		TempArray2.append(0)
-
 ax1.imshow(img)
 
 ax2.plot(BlurredImageArray, color="green")
 ax2.plot(TempArray)
-ax2.plot(TempArray2)
 #ax2.plot(Array.MeanArray(TempArray, 50))
 
 # ax2.plot(BlurredImageArray, color="green")
